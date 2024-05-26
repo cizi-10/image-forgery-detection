@@ -5,7 +5,7 @@ from PIL import Image, ImageChops
 import numpy as np
 
 # Load the trained model
-model_path = 'path_to_your_model/VGG16_417418.h5'  # Replace with the path to your model
+model_path = 'VGG16_417418.h5'  # Replace with the path to your model
 model = load_model(model_path)
 
 # Function to apply ELA
