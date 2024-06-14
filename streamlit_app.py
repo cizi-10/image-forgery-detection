@@ -32,7 +32,7 @@ st.title("Image Forgery Detection")
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 # Load model
-model_path = "model"  # Change this to the directory containing saved_model.pb
+model_path = "model/saved_model.pb"  # Change this to the directory containing saved_model.pb
 try:
     model = load_model(model_path)
     st.success("Model loaded successfully!")
