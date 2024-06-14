@@ -4,7 +4,7 @@ import tensorflow as tf
 import streamlit as st
 
 # Load the saved model
-model_path = 'saved_model.pb'  # Update this with your actual model directory
+model_path = 'model'  # Update this with your actual model directory
 try:
     model = tf.saved_model.load(model_path)
     infer = model.signatures["serving_default"]
