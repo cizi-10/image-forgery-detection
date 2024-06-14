@@ -1,7 +1,9 @@
 import numpy as np
 from PIL import Image, ImageOps
-import tensorflow as tf
 import streamlit as st
+import os
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
 
 # Load the saved model
 model_path = 'model'  # Update this with your actual model directory
