@@ -1,17 +1,21 @@
 import numpy as np
 from PIL import Image, ImageOps
-import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras.models import load_model
+import streamlit as st
 
 # Load the saved model
-model_path = 'saved_model.pb'  # Update this with your actual model path
-model = load_model(model_path, custom_objects={'loss': 'binary_crossentropy', 'f1_score': 'binary_accuracy'})  # Update custom_objects as needed
+model_path = 'saved_model.pb'  # Update this with your actual model directory
+try:
+    model = tf.saved_model.load(model_path)
+    infer = model.signatures["serving_default"]
+except Exception as e:
+    st.error(f"Error loading the model: {e}")
+    st.stop()
 
 # Function to preprocess the input image
 def preprocess_image(image_path, target_size=(512, 512)):
     image = Image.open(image_path)
-    image = ImageOps.fit(image, target_size, Image.ANTIALIAS)
+    image = ImageOps.fit(image, target_size, Image.LANCZOS)
     image = np.array(image) / 255.0  # Normalize to [0, 1]
     image = np.expand_dims(image, axis=0)  # Add batch dimension
     return image
@@ -38,7 +42,9 @@ def predict_manipulated_regions(image_path):
     preprocessed_image = preprocess_image(image_path)
 
     # Predict the mask
-    predicted_mask = model.predict(preprocessed_image)
+    input_tensor = tf.convert_to_tensor(preprocessed_image, dtype=tf.float32)
+    output_dict = infer(input_tensor)
+    predicted_mask = output_dict['output_0'].numpy()
 
     # Post-process the predicted mask
     original_image = Image.open(image_path)
@@ -49,13 +55,18 @@ def predict_manipulated_regions(image_path):
 
     return overlayed_image
 
-# Test the function with an input image
-input_image_path = 'Tp_D_CND_S_N_ani00073_ani00068_00193.png'  # Update this with the actual image path
-overlayed_image = predict_manipulated_regions(input_image_path)
+# Streamlit app
+st.title("Image Forgery Detection")
 
-# Display the result
-plt.figure(figsize=(10, 10))
-plt.imshow(overlayed_image)
-plt.axis('off')
-plt.title('Manipulated Regions Highlighted')
-plt.show()
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+if uploaded_file is not None:
+    with open("temp_image.png", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    st.write("Classifying...")
+
+    try:
+        overlayed_image = predict_manipulated_regions("temp_image.png")
+        st.image(overlayed_image, caption="Manipulated Regions Highlighted", use_column_width=True)
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
