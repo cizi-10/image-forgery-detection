@@ -5,6 +5,10 @@ from tensorflow.keras.preprocessing.image import img_to_array
 import matplotlib.pyplot as plt
 from PIL import Image
 
+# Function to load the model
+def load_model(model_dir):
+    return tf.saved_model.load(model_dir)
+
 # Function to preprocess the input image
 def preprocess_image(image_path, target_size=(512, 512)):
     image = Image.open(image_path)
@@ -17,7 +21,8 @@ def preprocess_image(image_path, target_size=(512, 512)):
 # Function to make predictions
 def predict(image_path, model):
     image = preprocess_image(image_path)
-    predictions = model.predict(image)
+    predictions = model(image)
+    predictions = predictions['output_0'].numpy()  # Adjust this line based on your model's output
     return predictions
 
 # Streamlit app
@@ -27,10 +32,9 @@ st.title("Image Forgery Detection")
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 # Load model
-model_path = "model_unet_2.keras"  # Update this with the correct path to your .keras model
-
+model_path = "model"  # Change this to the directory containing saved_model.pb
 try:
-    model = tf.keras.models.load_model(model_path)
+    model = load_model(model_path)
     st.success("Model loaded successfully!")
 except Exception as e:
     st.error(f"Error loading the model: {e}")
@@ -41,8 +45,5 @@ if uploaded_file is not None:
     st.write("")
     st.write("Detecting...")
 
-    try:
-        predictions = predict(uploaded_file, model)
-        st.image(predictions[0], caption='Predicted Manipulated Regions', use_column_width=True)
-    except Exception as e:
-        st.error(f"Error making predictions: {e}")
+    predictions = predict(uploaded_file, model)
+    st.image(predictions[0], caption='Predicted Manipulated Regions', use_column_width=True)
