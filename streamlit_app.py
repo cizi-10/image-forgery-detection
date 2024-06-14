@@ -1,54 +1,61 @@
-import streamlit as st
+import numpy as np
+from PIL import Image, ImageOps
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from PIL import Image, ImageChops
-import numpy as np
 
-# Load the trained model
-model_path = 'VGG16_417418.h5'  # Replace with the path to your model
-model = load_model(model_path)
+# Load the saved model
+model_path = 'saved_model.pb'  # Update this with your actual model path
+model = load_model(model_path, custom_objects={'loss': 'binary_crossentropy', 'f1_score': 'binary_accuracy'})  # Update custom_objects as needed
 
-# Function to apply ELA
-def ELA(img_path, quality=90, threshold=60):
-    TEMP = 'ela_temp.jpg'
-    SCALE = 10
-    original = Image.open(img_path).convert('RGB')
-    original.save(TEMP, quality=quality)
-    temporary = Image.open(TEMP)
-    diff = ImageChops.difference(original, temporary)
-    
-    d = diff.load()
-    WIDTH, HEIGHT = diff.size
-    
-    for x in range(WIDTH):
-        for y in range(HEIGHT):
-            r, g, b = d[x, y]
-            modified_intensity = int(0.2989 * r + 0.587 * g + 0.114 * b)
-            d[x, y] = modified_intensity * SCALE, modified_intensity * SCALE, modified_intensity * SCALE
-    
-    binary_mask = diff.point(lambda p: 255 if p > threshold else 0)
-    return binary_mask
-
-def preprocess_image(image):
-    image = ELA(image)
-    image = image.resize((100, 100))
-    image = np.array(image) / 255.0
-    image = image.reshape(1, 100, 100, 3)
+# Function to preprocess the input image
+def preprocess_image(image_path, target_size=(512, 512)):
+    image = Image.open(image_path)
+    image = ImageOps.fit(image, target_size, Image.ANTIALIAS)
+    image = np.array(image) / 255.0  # Normalize to [0, 1]
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
     return image
 
-# Streamlit app
-st.title('Image Forgery Detection using ELA and VGG16')
+# Function to post-process the predicted mask
+def postprocess_mask(mask, original_size):
+    mask = np.squeeze(mask)  # Remove batch dimension
+    mask = (mask > 0.5).astype(np.uint8)  # Binarize
+    mask = Image.fromarray(mask * 255)  # Convert to PIL Image
+    mask = mask.resize(original_size, Image.NEAREST)  # Resize to original size
+    return mask
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image', use_column_width=True)
-    st.write("")
-    st.write("Classifying...")
-    
-    processed_image = preprocess_image(uploaded_file)
-    prediction = model.predict(processed_image)
-    if np.argmax(prediction) == 0:
-        st.write("The image is classified as: Real")
-    else:
-        st.write("The image is classified as: Fake")
+# Function to overlay mask on the original image
+def overlay_mask(image_path, mask):
+    original_image = Image.open(image_path)
+    mask = mask.convert("L")  # Convert mask to grayscale
+    mask = ImageOps.colorize(mask, black="black", white="red")  # Colorize mask (red for manipulated regions)
+    overlayed_image = Image.blend(original_image, mask, alpha=0.5)  # Blend original image and mask
+    return overlayed_image
+
+# Function to predict manipulated regions
+def predict_manipulated_regions(image_path):
+    # Preprocess the input image
+    preprocessed_image = preprocess_image(image_path)
+
+    # Predict the mask
+    predicted_mask = model.predict(preprocessed_image)
+
+    # Post-process the predicted mask
+    original_image = Image.open(image_path)
+    mask = postprocess_mask(predicted_mask, original_image.size)
+
+    # Overlay mask on the original image
+    overlayed_image = overlay_mask(image_path, mask)
+
+    return overlayed_image
+
+# Test the function with an input image
+input_image_path = 'path_to_your_input_image.jpg'  # Update this with the actual image path
+overlayed_image = predict_manipulated_regions(input_image_path)
+
+# Display the result
+plt.figure(figsize=(10, 10))
+plt.imshow(overlayed_image)
+plt.axis('off')
+plt.title('Manipulated Regions Highlighted')
+plt.show()
