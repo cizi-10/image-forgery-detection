@@ -50,7 +50,7 @@ def predict_manipulated_regions(image_path):
     return overlayed_image
 
 # Test the function with an input image
-input_image_path = 'path_to_your_input_image.jpg'  # Update this with the actual image path
+input_image_path = 'Tp_D_CND_S_N_ani00073_ani00068_00193.png'  # Update this with the actual image path
 overlayed_image = predict_manipulated_regions(input_image_path)
 
 # Display the result
