@@ -4,9 +4,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import img_to_array
 import matplotlib.pyplot as plt
 from PIL import Image
-
-def load_model(model_dir):
-    return tf.saved_model.load(model_dir)
+import os
 
 # Function to preprocess the input image
 def preprocess_image(image_path, target_size=(512, 512)):
@@ -21,7 +19,7 @@ def preprocess_image(image_path, target_size=(512, 512)):
 def predict(image_path, model):
     image = preprocess_image(image_path)
     predictions = model(image)
-    predictions = predictions['output_0'].numpy()  # Adjust this line based on your model's output
+    predictions = predictions.numpy()  # Adjust based on model's output
     return predictions
 
 # Streamlit app
@@ -31,9 +29,12 @@ st.title("Image Forgery Detection")
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 # Load model
+model_dir = 'model'  # Directory where saved_model.pb is located
+
 try:
-    model = tf.keras.models.load_model("model")
-    #model = load_model(modeldir)
+    saved_model = tf.saved_model.load(model_dir)
+    infer = saved_model.signatures['serving_default']  # Load the serving signature
+    model = tf.keras.layers.Lambda(lambda x: infer(tf.constant(x))['output_0'])  # Wrap in a Keras layer
     st.success("Model loaded successfully!")
 except Exception as e:
     st.error(f"Error loading the model: {e}")
@@ -44,5 +45,8 @@ if uploaded_file is not None:
     st.write("")
     st.write("Detecting...")
 
-    predictions = predict(uploaded_file, model)
-    st.image(predictions[0], caption='Predicted Manipulated Regions', use_column_width=True)
+    try:
+        predictions = predict(uploaded_file, model)
+        st.image(predictions[0], caption='Predicted Manipulated Regions', use_column_width=True)
+    except Exception as e:
+        st.error(f"Error making predictions: {e}")
