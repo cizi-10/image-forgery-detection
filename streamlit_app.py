@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # Function to load the model
+modeldir = tf.keras.models.load_model("model")
+
 def load_model(model_dir):
     return tf.saved_model.load(model_dir)
 
@@ -32,9 +34,8 @@ st.title("Image Forgery Detection")
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 # Load model
-model_path = "model"  # Change this to the directory containing saved_model.pb
 try:
-    model = load_model(model_path)
+    model = load_model(modeldir)
     st.success("Model loaded successfully!")
 except Exception as e:
     st.error(f"Error loading the model: {e}")
